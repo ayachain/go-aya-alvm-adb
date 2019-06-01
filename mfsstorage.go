@@ -1,8 +1,12 @@
-package main
+package go_aya_alvm_adb
 
 import (
-	"bytes"
+	"context"
 	"errors"
+	"fmt"
+	dag "github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-mfs"
+	ft "github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"os"
 	"sync"
@@ -13,54 +17,25 @@ var (
 	errReadOnly = errors.New("leveldb/storage: storage is read-only")
 )
 
-const typeShift = 4
-
-// Verify at compile-time that typeShift is large enough to cover all FileType
-// values by confirming that 0 == 0.
-var _ [0]struct{} = [storage.TypeAll >> typeShift]struct{}{}
-
-type mfsStorageLock struct {
-	ms *mfsStorage
-}
-
-func (lock *mfsStorageLock) Unlock() {
-	ms := lock.ms
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	if ms.slock == lock {
-		ms.slock = nil
-	}
-	return
-}
-
 // mfsStorage is a memory-backed storage.
 type mfsStorage struct {
 	mu    sync.Mutex
 	slock *mfsStorageLock
-	files map[uint64]*memFile
 	meta  storage.FileDesc
+	mdir *mfs.Directory
 }
 
 // NewmfsStorage returns a new memory-backed storage implementation.
-func NewMFSStorage() storage.Storage {
+func NewMFSStorage( mdir *mfs.Directory ) storage.Storage {
 	return &mfsStorage{
-		files: make(map[uint64]*memFile),
+		mdir: mdir,
 	}
-}
-
-func (ms *mfsStorage) Lock() (storage.Locker, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	if ms.slock != nil {
-		return nil, storage.ErrLocked
-	}
-	ms.slock = &mfsStorageLock{ms: ms}
-	return ms.slock, nil
 }
 
 func (*mfsStorage) Log(str string) {}
 
 func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
+
 	if !storage.FileDescOk(fd) {
 		return storage.ErrInvalidFile
 	}
@@ -68,6 +43,7 @@ func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
 	ms.mu.Lock()
 	ms.meta = fd
 	ms.mu.Unlock()
+
 	return nil
 }
 
@@ -80,74 +56,117 @@ func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
 	return ms.meta, nil
 }
 
+///rewrite over by oblivioned
 func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	var fds []storage.FileDesc
-	for x := range ms.files {
-		fd := unpackFile(x)
-		if fd.Type&ft != 0 {
+
+	lnames, err := ms.mdir.ListNames(ctx)
+	if err != nil {
+		return fds, err
+	}
+
+	for _, v := range lnames {
+		if fd, ok := fsParseName(v); ok && fd.Type&ft != 0 {
 			fds = append(fds, fd)
 		}
 	}
-	ms.mu.Unlock()
+
 	return fds, nil
 }
 
 func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
+
 	if !storage.FileDescOk(fd) {
 		return nil, storage.ErrInvalidFile
 	}
 
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	if m, exist := ms.files[packFile(fd)]; exist {
-		if m.open {
-			return nil, errFileOpen
+
+	if m, err := ms.mdir.Child( fsGenName(fd) ); err != nil {
+		return nil, os.ErrNotExist
+	} else {
+
+		if fi, ok := m.(*mfs.File); !ok {
+			return nil, fmt.Errorf("%v is not a file", fsGenName(fd))
+		} else {
+
+			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:false})
+			if err != nil {
+				return nil, err
+			}
+
+			return &mfsFile{FileDescriptor:fwt}, nil
 		}
-		m.open = true
-		return &memReader{Reader: bytes.NewReader(m.Bytes()), ms: ms, m: m}, nil
 	}
-	return nil, os.ErrNotExist
 }
 
 func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
+
 	if !storage.FileDescOk(fd) {
 		return nil, storage.ErrInvalidFile
 	}
 
-	x := packFile(fd)
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	m, exist := ms.files[x]
-	if exist {
-		if m.open {
-			return nil, errFileOpen
+
+	fname := fsGenName(fd)
+	nd, err := ms.mdir.Child(fname)
+
+	if err != nil {
+		//file not exist
+		nnd := dag.NodeWithData(ft.FilePBData(nil, 0))
+		nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
+		if err := ms.mdir.AddChild( fname, nnd ); err != nil {
+			return nil, err
 		}
-		m.Reset()
-	} else {
-		m = &memFile{}
-		ms.files[x] = m
+
+		nd, err = ms.mdir.Child(fname)
+		if err != nil {
+			return nil, err
+		}
 	}
-	m.open = true
-	return &memWriter{memFile: m, ms: ms}, nil
+
+	fi, ok := nd.(*mfs.File)
+	if !ok {
+		return nil, errors.New("expected *mfs.File, didnt get it. This is likely a race condition")
+	}
+
+	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:false})
+	if err != nil {
+		return nil, err
+	}
+
+	return &mfsFileWrite{FileDescriptor:fwt}, nil
 }
 
 func (ms *mfsStorage) Remove(fd storage.FileDesc) error {
+
 	if !storage.FileDescOk(fd) {
 		return storage.ErrInvalidFile
 	}
 
-	x := packFile(fd)
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	if _, exist := ms.files[x]; exist {
-		delete(ms.files, x)
-		return nil
+
+	fname := fsGenName(fd)
+	err := ms.mdir.Unlink(fname)
+	if err != nil {
+		return os.ErrNotExist
 	}
-	return os.ErrNotExist
+
+	return nil
 }
 
 func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
+
 	if !storage.FileDescOk(oldfd) || !storage.FileDescOk(newfd) {
 		return storage.ErrInvalidFile
 	}
@@ -155,69 +174,28 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 		return nil
 	}
 
-	oldx := packFile(oldfd)
-	newx := packFile(newfd)
+	oldName := fsGenName(oldfd)
+	newName := fsGenName(newfd)
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	oldm, exist := ms.files[oldx]
-	if !exist {
+
+	srcObj, err := ms.mdir.Child(oldName)
+	if err != nil {
 		return os.ErrNotExist
 	}
-	newm, exist := ms.files[newx]
-	if (exist && newm.open) || oldm.open {
-		return errFileOpen
+
+	nd, err := srcObj.GetNode()
+	if err != nil {
+		return os.ErrNotExist
 	}
-	delete(ms.files, oldx)
-	ms.files[newx] = oldm
-	return nil
-}
 
-func (*mfsStorage) Close() error { return nil }
-
-type memFile struct {
-	bytes.Buffer
-	open bool
-}
-
-type memReader struct {
-	*bytes.Reader
-	ms     *mfsStorage
-	m      *memFile
-	closed bool
-}
-
-func (mr *memReader) Close() error {
-	mr.ms.mu.Lock()
-	defer mr.ms.mu.Unlock()
-	if mr.closed {
-		return storage.ErrClosed
+	err = ms.mdir.AddChild(newName, nd)
+	if err != nil {
+		return err
 	}
-	mr.m.open = false
-	return nil
+
+	return ms.mdir.Unlink(oldName)
 }
 
-type memWriter struct {
-	*memFile
-	ms     *mfsStorage
-	closed bool
-}
-
-func (*memWriter) Sync() error { return nil }
-
-func (mw *memWriter) Close() error {
-	mw.ms.mu.Lock()
-	defer mw.ms.mu.Unlock()
-	if mw.closed {
-		return storage.ErrClosed
-	}
-	mw.memFile.open = false
-	return nil
-}
-
-func packFile(fd storage.FileDesc) uint64 {
-	return uint64(fd.Num)<<typeShift | uint64(fd.Type)
-}
-
-func unpackFile(x uint64) storage.FileDesc {
-	return storage.FileDesc{storage.FileType(x) & storage.TypeAll, int64(x >> typeShift)}
-}
+func (ms *mfsStorage) Close() error {return nil}
