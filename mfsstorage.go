@@ -8,9 +8,12 @@ import (
 	"github.com/ipfs/go-mfs"
 	ft "github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"io/ioutil"
 	"os"
 	"sync"
 )
+
+const mfsMetaFilePath = "CURRENT.META"
 
 var (
 	errFileOpen = errors.New("leveldb/storage: file still open")
@@ -19,10 +22,9 @@ var (
 
 // mfsStorage is a memory-backed storage.
 type mfsStorage struct {
-	mu    sync.Mutex
-	slock *mfsStorageLock
-	meta  storage.FileDesc
-	mdir *mfs.Directory
+	mu    	sync.Mutex
+	slock 	*mfsStorageLock
+	mdir 	*mfs.Directory
 }
 
 // NewmfsStorage returns a new memory-backed storage implementation.
@@ -36,24 +38,57 @@ func (*mfsStorage) Log(str string) {}
 
 func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
 
+	content := fsGenName(fd) + "\n"
+
 	if !storage.FileDescOk(fd) {
 		return storage.ErrInvalidFile
 	}
 
 	ms.mu.Lock()
-	ms.meta = fd
-	ms.mu.Unlock()
+	defer ms.mu.Unlock()
+
+	ms.mdir.Unlink(mfsMetaFilePath)
+	nnd := dag.NodeWithData( ft.FilePBData([]byte(content), 0) )
+	nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
+	if err := ms.mdir.AddChild( mfsMetaFilePath, nnd ); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	if ms.meta.Zero() {
+
+	mnd, err := ms.mdir.Child( mfsMetaFilePath )
+	if err != nil {
 		return storage.FileDesc{}, os.ErrNotExist
 	}
-	return ms.meta, nil
+
+	fi, ok := mnd.(*mfs.File)
+	if !ok {
+		return storage.FileDesc{}, os.ErrNotExist
+	}
+
+	rd, err := fi.Open(mfs.Flags{Read:true, Sync:false})
+	if err != nil {
+		return storage.FileDesc{}, os.ErrNotExist
+	}
+	defer rd.Close()
+
+	bs, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return storage.FileDesc{}, os.ErrNotExist
+	}
+
+	fd, ok := fsParseName(string(bs))
+	if !ok {
+		return storage.FileDesc{}, os.ErrNotExist
+	}
+
+	return fd, nil
 }
 
 ///rewrite over by oblivioned
