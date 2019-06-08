@@ -233,4 +233,6 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 	return ms.mdir.Unlink(oldName)
 }
 
-func (ms *mfsStorage) Close() error {return nil}
+func (ms *mfsStorage) Close() error {
+	return ms.mdir.Flush()
+}
