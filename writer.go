@@ -11,5 +11,5 @@ type mfsFileWrite struct {
 }
 
 func (fw *mfsFileWrite) Sync() error {
-	return nil
+	return fw.FileDescriptor.Flush()
 }

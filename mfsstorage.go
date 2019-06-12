@@ -18,23 +18,32 @@ const mfsMetaFilePath = "CURRENT.META"
 var (
 	errFileOpen = errors.New("leveldb/storage: file still open")
 	errReadOnly = errors.New("leveldb/storage: storage is read-only")
+	ErrLocked   = errors.New("leveldb/storage: already locked")
 )
 
 // mfsStorage is a memory-backed storage.
 type mfsStorage struct {
-	mu    	sync.Mutex
-	slock 	*mfsStorageLock
-	mdir 	*mfs.Directory
+
+	storage.Storage
+
+	mu    		sync.Mutex
+
+	slock 		*mfsStorageLock
+
+	mdir 		*mfs.Directory
+
+	openedWarp	map[storage.FileDesc]*mfsfileWrap
 }
 
 // NewmfsStorage returns a new memory-backed storage implementation.
 func NewMFSStorage( mdir *mfs.Directory ) storage.Storage {
 	return &mfsStorage{
 		mdir: mdir,
+		openedWarp:make(map[storage.FileDesc]*mfsfileWrap),
 	}
 }
 
-func (*mfsStorage) Log(str string) {}
+func (ms *mfsStorage) Log(str string) {}
 
 func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
 
@@ -91,7 +100,6 @@ func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
 	return fd, nil
 }
 
-///rewrite over by oblivioned
 func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -138,7 +146,15 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 				return nil, err
 			}
 
-			return &mfsFile{FileDescriptor:fwt}, nil
+			fwrap := &mfsfileWrap{
+				FileDescriptor:fwt,
+				ms:ms,
+				fd:fd,
+				closed:false,
+			}
+
+			ms.openedWarp[fd] = fwrap
+			return fwrap, nil
 		}
 	}
 }
@@ -234,5 +250,10 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 }
 
 func (ms *mfsStorage) Close() error {
+
+	for _, v := range ms.openedWarp {
+		v.Close()
+	}
+
 	return ms.mdir.Flush()
 }
