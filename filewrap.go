@@ -56,6 +56,10 @@ func (fw *mfsfileWrap) Close() error {
 		return storage.ErrClosed
 	}
 
+	if err := fw.Sync(); err != nil {
+		return err
+	}
+
 	fw.closed = true
 
 	delete( fw.ms.openedWarp, fw.fd )

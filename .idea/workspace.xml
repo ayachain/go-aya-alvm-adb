@@ -3,10 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="f31eb3e8-b5d9-4c94-b876-487940f80d59" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mfsfile.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/filewrap.go" beforeDir="false" afterPath="$PROJECT_DIR$/filewrap.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mfsstorage.go" beforeDir="false" afterPath="$PROJECT_DIR$/mfsstorage.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/writer.go" beforeDir="false" afterPath="$PROJECT_DIR$/writer.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -16,26 +14,22 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/mfsstorage.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="285">
-              <caret line="30" column="31" selection-start-line="30" selection-start-column="31" selection-end-line="30" selection-end-column="31" />
+            <state relative-caret-position="518">
+              <caret line="256" column="4" selection-start-line="256" selection-start-column="4" selection-end-line="256" selection-end-column="4" />
               <folding>
                 <element signature="n#!!block;n#SetMeta#0" />
-                <element signature="n#!!block;n#GetMeta#0" />
                 <element signature="n#!!block;n#List#0" />
-                <element signature="n#!!block;n#Open#0" />
-                <element signature="n#!!block;n#Create#0" />
                 <element signature="n#!!block;n#Remove#0" />
                 <element signature="n#!!block;n#Rename#0" />
-                <element signature="n#!!block;n#Close#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/writer.go">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="165">
@@ -56,8 +50,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/filewrap.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="465">
-              <caret line="35" column="43" selection-start-line="35" selection-start-column="43" selection-end-line="35" selection-end-column="43" />
+            <state relative-caret-position="458">
+              <caret line="59" column="18" selection-start-line="59" selection-start-column="18" selection-end-line="59" selection-end-column="18" />
             </state>
           </provider>
         </entry>
@@ -89,7 +83,6 @@
       <find>Remove</find>
       <find>List</find>
       <find>memf</find>
-      <find>Sync</find>
       <find>mfsFileReader</find>
       <find>SetM</find>
       <find>Close</find>
@@ -104,6 +97,8 @@
       <find>Open</find>
       <find>Open(</find>
       <find>slock</find>
+      <find>Flush</find>
+      <find>Sync</find>
     </findStrings>
     <replaceStrings>
       <replace>mfsStorage</replace>
@@ -133,9 +128,9 @@
         <option value="$PROJECT_DIR$/reader.go" />
         <option value="$PROJECT_DIR$/mfsstoragelock.go" />
         <option value="$PROJECT_DIR$/mfsfile.go" />
+        <option value="$PROJECT_DIR$/writer.go" />
         <option value="$PROJECT_DIR$/filewrap.go" />
         <option value="$PROJECT_DIR$/mfsstorage.go" />
-        <option value="$PROJECT_DIR$/writer.go" />
       </list>
     </option>
   </component>
@@ -150,7 +145,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="y" value="23" />
+    <option name="x" value="51" />
+    <option name="y" value="104" />
     <option name="width" value="1251" />
     <option name="height" value="777" />
   </component>
@@ -162,7 +158,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -178,6 +173,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -239,10 +235,10 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="1251" height="777" extended-state="0" />
+    <frame x="51" y="104" width="1251" height="777" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.27460712" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.28701407" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -371,20 +367,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/mfsstorage.go">
+    <entry file="file://$PROJECT_DIR$/../../../../pkg/mod/github.com/ipfs/go-mfs@v0.0.7/dir.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="285">
-          <caret line="30" column="31" selection-start-line="30" selection-start-column="31" selection-end-line="30" selection-end-column="31" />
-          <folding>
-            <element signature="n#!!block;n#SetMeta#0" />
-            <element signature="n#!!block;n#GetMeta#0" />
-            <element signature="n#!!block;n#List#0" />
-            <element signature="n#!!block;n#Open#0" />
-            <element signature="n#!!block;n#Create#0" />
-            <element signature="n#!!block;n#Remove#0" />
-            <element signature="n#!!block;n#Rename#0" />
-            <element signature="n#!!block;n#Close#0" />
-          </folding>
+        <state relative-caret-position="220">
+          <caret line="338" column="20" selection-start-line="338" selection-start-column="20" selection-end-line="338" selection-end-column="20" />
         </state>
       </provider>
     </entry>
@@ -392,13 +378,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="495">
           <caret line="36" column="23" selection-start-line="36" selection-start-column="23" selection-end-line="36" selection-end-column="23" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/filewrap.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="465">
-          <caret line="35" column="43" selection-start-line="35" selection-start-column="43" selection-end-line="35" selection-end-column="43" />
         </state>
       </provider>
     </entry>
@@ -413,6 +392,26 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="165">
           <caret line="14" column="1" selection-start-line="14" selection-start-column="1" selection-end-line="14" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/filewrap.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="458">
+          <caret line="59" column="18" selection-start-line="59" selection-start-column="18" selection-end-line="59" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mfsstorage.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="518">
+          <caret line="256" column="4" selection-start-line="256" selection-start-column="4" selection-end-line="256" selection-end-column="4" />
+          <folding>
+            <element signature="n#!!block;n#SetMeta#0" />
+            <element signature="n#!!block;n#List#0" />
+            <element signature="n#!!block;n#Remove#0" />
+            <element signature="n#!!block;n#Rename#0" />
+          </folding>
         </state>
       </provider>
     </entry>

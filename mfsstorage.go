@@ -81,7 +81,7 @@ func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
-	rd, err := fi.Open(mfs.Flags{Read:true, Sync:false})
+	rd, err := fi.Open(mfs.Flags{Read:true, Sync:true})
 	if err != nil {
 		return storage.FileDesc{}, os.ErrNotExist
 	}
@@ -141,7 +141,7 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 			return nil, fmt.Errorf("%v is not a file", fsGenName(fd))
 		} else {
 
-			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:false})
+			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:true})
 			if err != nil {
 				return nil, err
 			}
@@ -190,7 +190,7 @@ func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 		return nil, errors.New("expected *mfs.File, didnt get it. This is likely a race condition")
 	}
 
-	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:false})
+	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:true})
 	if err != nil {
 		return nil, err
 	}
