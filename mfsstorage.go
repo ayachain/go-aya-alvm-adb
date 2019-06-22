@@ -3,7 +3,6 @@ package go_aya_alvm_adb
 import (
 	"context"
 	"errors"
-	"fmt"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	ft "github.com/ipfs/go-unixfs"
@@ -18,7 +17,6 @@ const mfsMetaFilePath = "CURRENT.META"
 var (
 	errFileOpen = errors.New("leveldb/storage: file still open")
 	errReadOnly = errors.New("leveldb/storage: storage is read-only")
-	ErrLocked   = errors.New("leveldb/storage: already locked")
 )
 
 // mfsStorage is a memory-backed storage.
@@ -56,9 +54,11 @@ func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
-	ms.mdir.Unlink(mfsMetaFilePath)
+	_ = ms.mdir.Unlink(mfsMetaFilePath)
+
 	nnd := dag.NodeWithData( ft.FilePBData([]byte(content), 0) )
 	nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
+
 	if err := ms.mdir.AddChild( mfsMetaFilePath, nnd ); err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
-	rd, err := fi.Open(mfs.Flags{Read:true, Sync:true})
+	rd, err := fi.Open(mfs.Flags{Read:true, Sync:false})
 	if err != nil {
 		return storage.FileDesc{}, os.ErrNotExist
 	}
@@ -102,23 +102,22 @@ func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
 
 func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
 	var fds []storage.FileDesc
 
-	lnames, err := ms.mdir.ListNames(ctx)
+	lnames, err := ms.mdir.ListNames(context.TODO())
 	if err != nil {
 		return fds, err
 	}
 
 	for _, v := range lnames {
-		if fd, ok := fsParseName(v); ok && fd.Type&ft != 0 {
+
+		if fd, ok := fsParseName(v); ok && fd.Type & ft != 0 {
 			fds = append(fds, fd)
 		}
+
 	}
 
 	return fds, nil
@@ -134,14 +133,19 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 	defer ms.mu.Unlock()
 
 	if m, err := ms.mdir.Child( fsGenName(fd) ); err != nil {
+
 		return nil, os.ErrNotExist
+
 	} else {
 
 		if fi, ok := m.(*mfs.File); !ok {
-			return nil, fmt.Errorf("%v is not a file", fsGenName(fd))
+
+			return nil, os.ErrNotExist
+
 		} else {
 
-			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:true})
+			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:false})
+
 			if err != nil {
 				return nil, err
 			}
@@ -154,6 +158,7 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 			}
 
 			ms.openedWarp[fd] = fwrap
+
 			return fwrap, nil
 		}
 	}
@@ -171,18 +176,28 @@ func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 	fname := fsGenName(fd)
 	nd, err := ms.mdir.Child(fname)
 
-	if err != nil {
-		//file not exist
-		nnd := dag.NodeWithData(ft.FilePBData(nil, 0))
-		nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
-		if err := ms.mdir.AddChild( fname, nnd ); err != nil {
-			return nil, err
+	if err == nil {
+
+		// file already must be truncate
+		if err := ms.mdir.Unlink( fname ); err != nil {
+
+			return nil, storage.ErrClosed
+
 		}
 
-		nd, err = ms.mdir.Child(fname)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	//file not exist
+	nnd := dag.NodeWithData(ft.FilePBData(nil, 0))
+	nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
+
+	if err := ms.mdir.AddChild( fname, nnd ); err != nil {
+		return nil, storage.ErrClosed
+	}
+
+	nd, err = ms.mdir.Child(fname)
+	if err != nil {
+		return nil, storage.ErrClosed
 	}
 
 	fi, ok := nd.(*mfs.File)
@@ -190,7 +205,7 @@ func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 		return nil, errors.New("expected *mfs.File, didnt get it. This is likely a race condition")
 	}
 
-	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:true})
+	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:false})
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +225,7 @@ func (ms *mfsStorage) Remove(fd storage.FileDesc) error {
 	fname := fsGenName(fd)
 	err := ms.mdir.Unlink(fname)
 	if err != nil {
-		return os.ErrNotExist
+		return os.ErrClosed
 	}
 
 	return nil
@@ -243,7 +258,7 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 
 	err = ms.mdir.AddChild(newName, nd)
 	if err != nil {
-		return err
+		return os.ErrClosed
 	}
 
 	return ms.mdir.Unlink(oldName)
@@ -252,7 +267,11 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 func (ms *mfsStorage) Close() error {
 
 	for _, v := range ms.openedWarp {
-		v.Close()
+
+		if err := v.Close(); err != nil {
+			return os.ErrClosed
+		}
+
 	}
 
 	return ms.mdir.Flush()

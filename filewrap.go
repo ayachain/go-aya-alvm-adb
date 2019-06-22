@@ -7,8 +7,11 @@ import (
 )
 
 type mfsfileWrap struct {
+
 	io.ReaderAt
+
 	mfs.FileDescriptor
+
 	ms *mfsStorage
 	fd storage.FileDesc
 	closed bool
