@@ -6,7 +6,9 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	ft "github.com/ipfs/go-unixfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/whyrusleeping/go-logging"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -14,13 +16,8 @@ import (
 
 const mfsMetaFilePath = "CURRENT.META"
 
-var (
-	errFileOpen = errors.New("leveldb/storage: file still open")
-	errReadOnly = errors.New("leveldb/storage: storage is read-only")
-)
-
 // mfsStorage is a memory-backed storage.
-type mfsStorage struct {
+type MFSStorage struct {
 
 	storage.Storage
 
@@ -30,24 +27,33 @@ type mfsStorage struct {
 
 	mdir 		*mfs.Directory
 
-	openedWarp	map[storage.FileDesc]*mfsfileWrap
+	openedWarp	sync.Map
+
+	log			*logging.Logger
 }
 
 // NewmfsStorage returns a new memory-backed storage implementation.
-func NewMFSStorage( mdir *mfs.Directory ) storage.Storage {
-	return &mfsStorage{
+func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
+
+	logging.SetLevel( logging.NOTICE, dbkey )
+
+	return &MFSStorage{
 		mdir: mdir,
-		openedWarp:make(map[storage.FileDesc]*mfsfileWrap),
+		log:logging.MustGetLogger(dbkey),
 	}
+
 }
 
-func (ms *mfsStorage) Log(str string) {}
+func (ms *MFSStorage) Log(str string) {
+	ms.log.Info(str)
+}
 
-func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
+func (ms *MFSStorage) SetMeta(fd storage.FileDesc) error {
 
 	content := fsGenName(fd) + "\n"
 
 	if !storage.FileDescOk(fd) {
+		ms.log.Error(storage.ErrInvalidFile)
 		return storage.ErrInvalidFile
 	}
 
@@ -60,47 +66,58 @@ func (ms *mfsStorage) SetMeta(fd storage.FileDesc) error {
 	nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
 
 	if err := ms.mdir.AddChild( mfsMetaFilePath, nnd ); err != nil {
+		ms.log.Error(err)
+		return err
+	}
+
+	if err := ms.mdir.Flush(); err != nil {
+		ms.log.Error(err)
 		return err
 	}
 
 	return nil
 }
 
-func (ms *mfsStorage) GetMeta() (storage.FileDesc, error) {
+func (ms *MFSStorage) GetMeta() (storage.FileDesc, error) {
 
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
 	mnd, err := ms.mdir.Child( mfsMetaFilePath )
 	if err != nil {
+		ms.log.Info(os.ErrNotExist)
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
 	fi, ok := mnd.(*mfs.File)
 	if !ok {
+		ms.log.Error(os.ErrNotExist)
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
 	rd, err := fi.Open(mfs.Flags{Read:true, Sync:false})
 	if err != nil {
+		ms.log.Error(os.ErrNotExist)
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 	defer rd.Close()
 
 	bs, err := ioutil.ReadAll(rd)
 	if err != nil {
+		ms.log.Error(os.ErrNotExist)
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
 	fd, ok := fsParseName(string(bs))
 	if !ok {
+		ms.log.Error(os.ErrNotExist)
 		return storage.FileDesc{}, os.ErrNotExist
 	}
 
 	return fd, nil
 }
 
-func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
+func (ms *MFSStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
 
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
@@ -109,6 +126,7 @@ func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
 
 	lnames, err := ms.mdir.ListNames(context.TODO())
 	if err != nil {
+		ms.log.Error(err)
 		return fds, err
 	}
 
@@ -123,9 +141,10 @@ func (ms *mfsStorage) List(ft storage.FileType) ([]storage.FileDesc, error) {
 	return fds, nil
 }
 
-func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
+func (ms *MFSStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 
 	if !storage.FileDescOk(fd) {
+		ms.log.Error(storage.ErrInvalidFile)
 		return nil, storage.ErrInvalidFile
 	}
 
@@ -133,13 +152,13 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 	defer ms.mu.Unlock()
 
 	if m, err := ms.mdir.Child( fsGenName(fd) ); err != nil {
-
+		ms.log.Error(os.ErrNotExist)
 		return nil, os.ErrNotExist
 
 	} else {
 
 		if fi, ok := m.(*mfs.File); !ok {
-
+			ms.log.Error(os.ErrNotExist)
 			return nil, os.ErrNotExist
 
 		} else {
@@ -147,6 +166,7 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 			fwt, err := fi.Open(mfs.Flags{Read:true, Sync:false})
 
 			if err != nil {
+				ms.log.Error(err)
 				return nil, err
 			}
 
@@ -156,17 +176,17 @@ func (ms *mfsStorage) Open(fd storage.FileDesc) (storage.Reader, error) {
 				fd:fd,
 				closed:false,
 			}
-
-			ms.openedWarp[fd] = fwrap
+			ms.openedWarp.Store(fd, fwrap)
 
 			return fwrap, nil
 		}
 	}
 }
 
-func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
+func (ms *MFSStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 
 	if !storage.FileDescOk(fd) {
+		ms.log.Error(os.ErrNotExist)
 		return nil, storage.ErrInvalidFile
 	}
 
@@ -176,27 +196,22 @@ func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 	fname := fsGenName(fd)
 	nd, err := ms.mdir.Child(fname)
 
-	if err == nil {
+	if err != nil {
 
-		// file already must be truncate
-		if err := ms.mdir.Unlink( fname ); err != nil {
+		//file not exist
+		nnd := dag.NodeWithData(ft.FilePBData(nil, 0))
+		nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
 
+		if err := ms.mdir.AddChild( fname, nnd ); err != nil {
+			ms.log.Error(storage.ErrClosed)
 			return nil, storage.ErrClosed
-
 		}
 
 	}
 
-	//file not exist
-	nnd := dag.NodeWithData(ft.FilePBData(nil, 0))
-	nnd.SetCidBuilder(ms.mdir.GetCidBuilder())
-
-	if err := ms.mdir.AddChild( fname, nnd ); err != nil {
-		return nil, storage.ErrClosed
-	}
-
 	nd, err = ms.mdir.Child(fname)
 	if err != nil {
+		ms.log.Error(storage.ErrClosed)
 		return nil, storage.ErrClosed
 	}
 
@@ -207,15 +222,30 @@ func (ms *mfsStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 
 	fwt, err := fi.Open(mfs.Flags{Write:true, Sync:false})
 	if err != nil {
+		ms.log.Error(err)
 		return nil, err
 	}
 
-	return &mfsFileWrite{FileDescriptor:fwt}, nil
+	if err := fwt.Truncate(0); err != nil {
+		ms.log.Error(err)
+		return nil, storage.ErrClosed
+	}
+
+	fwrap := &mfsfileWrap{
+		FileDescriptor:fwt,
+		ms:ms,
+		fd:fd,
+		closed:false,
+	}
+	ms.openedWarp.Store(fd, fwrap)
+
+	return fwrap, nil
 }
 
-func (ms *mfsStorage) Remove(fd storage.FileDesc) error {
+func (ms *MFSStorage) Remove(fd storage.FileDesc) error {
 
 	if !storage.FileDescOk(fd) {
+		ms.log.Error(storage.ErrInvalidFile)
 		return storage.ErrInvalidFile
 	}
 
@@ -225,15 +255,17 @@ func (ms *mfsStorage) Remove(fd storage.FileDesc) error {
 	fname := fsGenName(fd)
 	err := ms.mdir.Unlink(fname)
 	if err != nil {
+		ms.log.Error(os.ErrClosed)
 		return os.ErrClosed
 	}
 
 	return nil
 }
 
-func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
+func (ms *MFSStorage) Rename(oldfd, newfd storage.FileDesc) error {
 
 	if !storage.FileDescOk(oldfd) || !storage.FileDescOk(newfd) {
+		ms.log.Error(storage.ErrInvalidFile)
 		return storage.ErrInvalidFile
 	}
 	if oldfd == newfd {
@@ -248,31 +280,75 @@ func (ms *mfsStorage) Rename(oldfd, newfd storage.FileDesc) error {
 
 	srcObj, err := ms.mdir.Child(oldName)
 	if err != nil {
+		ms.log.Error(os.ErrNotExist)
 		return os.ErrNotExist
 	}
 
 	nd, err := srcObj.GetNode()
 	if err != nil {
+		ms.log.Error(os.ErrNotExist)
 		return os.ErrNotExist
 	}
 
 	err = ms.mdir.AddChild(newName, nd)
 	if err != nil {
+		ms.log.Error(os.ErrClosed)
 		return os.ErrClosed
 	}
 
 	return ms.mdir.Unlink(oldName)
 }
 
-func (ms *mfsStorage) Close() error {
+func (ms *MFSStorage) Close() error {
 
-	for _, v := range ms.openedWarp {
+	ms.openedWarp.Range(func(key, value interface{}) bool {
 
-		if err := v.Close(); err != nil {
-			return os.ErrClosed
+		fw, ok := value.(*mfsfileWrap)
+
+		ms.log.Warning("before close db :" + fsGenName(fw.fd) + " file can't close")
+
+		if !ok {
+			return false
 		}
 
+		if err := fw.Close(); err != nil {
+			ms.log.Error(err)
+			return false
+		}
+
+		ms.openedWarp.Delete(key)
+
+		return true
+
+	})
+
+	return nil
+}
+
+func (ms *MFSStorage) Flush() error {
+
+	var err error
+
+	ms.openedWarp.Range(func(key, value interface{}) bool {
+
+		fw, ok := value.(*mfsfileWrap)
+
+		if !ok {
+			return false
+		}
+
+		if err = fw.Sync(); err != nil {
+			return false
+		}
+
+		return true
+
+	})
+
+	if err != nil {
+		log.Error(err)
+		return err
 	}
 
-	return ms.mdir.Flush()
+	return nil
 }

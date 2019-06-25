@@ -12,37 +12,46 @@ type mfsfileWrap struct {
 
 	mfs.FileDescriptor
 
-	ms *mfsStorage
+	ms *MFSStorage
+
 	fd storage.FileDesc
+
 	closed bool
 }
 
 
-func (mf *mfsfileWrap) ReadAt(p []byte, off int64) (int, error) {
+func (fw *mfsfileWrap) ReadAt(p []byte, off int64) (int, error) {
 
-	oseek, err := mf.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-	defer mf.Seek(oseek, 0)
+	fw.ms.mu.Lock()
+	defer fw.ms.mu.Unlock()
 
-	_, err = mf.Seek(off, 0)
+	_, err := fw.Seek(off, io.SeekStart)
 	if err != nil {
-		return 0, err
+		fw.ms.log.Errorf("ADB FileWrap ReadAt ERR:%v\n", err)
 	}
 
-	return mf.Read(p)
+	return fw.Read(p)
 }
 
 func (fw *mfsfileWrap) Sync() error {
 
+	fw.ms.mu.Lock()
+	defer fw.ms.mu.Unlock()
+
+	if fw.closed {
+		fw.ms.log.Warning(storage.ErrClosed)
+		return nil
+	}
+
 	if err := fw.FileDescriptor.Flush(); err != nil {
-		return err
+		fw.ms.log.Warning(err)
+		//return nil
 	}
 
 	if fw.fd.Type == storage.TypeManifest {
 
 		if err := fw.ms.mdir.Flush(); err != nil {
+			fw.ms.log.Error(err)
 			return err
 		}
 	}
@@ -56,18 +65,22 @@ func (fw *mfsfileWrap) Close() error {
 	defer fw.ms.mu.Unlock()
 
 	if fw.closed {
+		fw.ms.log.Error(storage.ErrClosed)
 		return storage.ErrClosed
 	}
 
-	if err := fw.Sync(); err != nil {
+	if err := fw.FileDescriptor.Flush(); err != nil {
+		fw.ms.log.Error(err)
+		return err
+	}
+
+	if err := fw.FileDescriptor.Close(); err != nil {
+		fw.ms.log.Error(err)
 		return err
 	}
 
 	fw.closed = true
+	fw.ms.openedWarp.Delete(fw.fd)
 
-	delete( fw.ms.openedWarp, fw.fd )
-
-	err := fw.FileDescriptor.Close()
-
-	return err
+	return nil
 }

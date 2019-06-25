@@ -36,6 +36,7 @@ func fsParseName(name string) (fd storage.FileDesc, ok bool) {
 		}
 		return fd, true
 	}
+
 	n, _ := fmt.Sscanf(name, "MANIFEST-%d%s", &fd.Num, &tail)
 	if n == 1 {
 		fd.Type = storage.TypeManifest

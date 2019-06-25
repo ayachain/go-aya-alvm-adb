@@ -5,21 +5,24 @@ import (
 )
 
 type mfsStorageLock struct {
-	ms *mfsStorage
+	ms *MFSStorage
 }
 
 func (lock *mfsStorageLock) Unlock() {
+
 	ms := lock.ms
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	if ms.slock == lock {
 		ms.slock = nil
 	}
+
 	return
 }
 
 
-func (ms *mfsStorage) Lock() (storage.Locker, error) {
+func (ms *MFSStorage) Lock() (storage.Locker, error) {
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	if ms.slock != nil {
