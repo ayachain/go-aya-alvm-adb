@@ -30,6 +30,8 @@ type MFSStorage struct {
 	openedWarp	sync.Map
 
 	log			*logging.Logger
+
+	dbkey 		string
 }
 
 // NewmfsStorage returns a new memory-backed storage implementation.
@@ -40,6 +42,7 @@ func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
 	return &MFSStorage{
 		mdir: mdir,
 		log:logging.MustGetLogger(dbkey),
+		dbkey:dbkey,
 	}
 
 }
@@ -207,12 +210,12 @@ func (ms *MFSStorage) Create(fd storage.FileDesc) (storage.Writer, error) {
 			return nil, storage.ErrClosed
 		}
 
-	}
+		nd, err = ms.mdir.Child(fname)
+		if err != nil {
+			ms.log.Error(storage.ErrClosed)
+			return nil, storage.ErrClosed
+		}
 
-	nd, err = ms.mdir.Child(fname)
-	if err != nil {
-		ms.log.Error(storage.ErrClosed)
-		return nil, storage.ErrClosed
 	}
 
 	fi, ok := nd.(*mfs.File)
