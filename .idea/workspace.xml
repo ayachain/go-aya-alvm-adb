@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="f31eb3e8-b5d9-4c94-b876-487940f80d59" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/filewrap.go" beforeDir="false" afterPath="$PROJECT_DIR$/filewrap.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mfsstorage.go" beforeDir="false" afterPath="$PROJECT_DIR$/mfsstorage.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -17,23 +16,20 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/mfsstorage.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="518">
-              <caret line="256" column="4" selection-start-line="256" selection-start-column="4" selection-end-line="256" selection-end-column="4" />
+            <state relative-caret-position="210">
+              <caret line="52" selection-start-line="52" selection-end-line="52" />
               <folding>
+                <element signature="n#!!block;n#Log#0" />
                 <element signature="n#!!block;n#SetMeta#0" />
+                <element signature="n#!!block;n#GetMeta#0" />
                 <element signature="n#!!block;n#List#0" />
+                <element signature="n#!!block;n#Open#0" />
+                <element signature="n#!!block;n#Create#0" />
                 <element signature="n#!!block;n#Remove#0" />
                 <element signature="n#!!block;n#Rename#0" />
+                <element signature="n#!!block;n#Close#0" />
+                <element signature="n#!!block;n#Flush#0" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/writer.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="14" column="1" selection-start-line="14" selection-start-column="1" selection-end-line="14" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -50,8 +46,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/filewrap.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="458">
-              <caret line="59" column="18" selection-start-line="59" selection-start-column="18" selection-end-line="59" selection-end-column="18" />
+            <state relative-caret-position="825">
+              <caret line="59" column="1" selection-start-line="59" selection-start-column="1" selection-end-line="59" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -104,7 +100,7 @@
       <replace>mfsStorage</replace>
     </replaceStrings>
   </component>
-  <component name="GOROOT" path="/usr/local/Cellar/go/1.12.5/libexec" />
+  <component name="GOROOT" path="/usr/local/Cellar/go/1.12.7/libexec" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -145,10 +141,9 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="51" />
-    <option name="y" value="104" />
-    <option name="width" value="1251" />
-    <option name="height" value="777" />
+    <option name="y" value="486" />
+    <option name="width" value="1406" />
+    <option name="height" value="877" />
   </component>
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="1" id="Add" />
@@ -164,10 +159,6 @@
             <path>
               <item name="go-aya-alvm-adb" type="b2602c69:ProjectViewProjectNode" />
               <item name="go-aya-alvm-adb" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya-alvm-adb" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
             </path>
           </expand>
           <select />
@@ -235,10 +226,10 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="51" y="104" width="1251" height="777" extended-state="0" />
+    <frame x="0" y="486" width="1406" height="877" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.28701407" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2807918" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -305,16 +296,7 @@
     <entry file="file://D:/go/src/io/io.go" />
     <entry file="file://D:/go/src/os/file_posix.go" />
     <entry file="file://$PROJECT_DIR$/main.go" />
-    <entry file="file://$PROJECT_DIR$/reader.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="203">
-          <caret line="7" column="22" selection-start-line="7" selection-start-column="22" selection-end-line="7" selection-end-column="22" />
-          <folding>
-            <element signature="e#21#104#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/reader.go" />
     <entry file="file://$PROJECT_DIR$/LICENSE">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
@@ -367,17 +349,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/writer.go" />
     <entry file="file://$PROJECT_DIR$/../../../../pkg/mod/github.com/ipfs/go-mfs@v0.0.7/dir.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="220">
-          <caret line="338" column="20" selection-start-line="338" selection-start-column="20" selection-end-line="338" selection-end-column="20" />
+        <state relative-caret-position="275">
+          <caret line="37" selection-start-line="37" selection-end-line="37" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pagename.go">
+    <entry file="file://$PROJECT_DIR$/filewrap.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="495">
-          <caret line="36" column="23" selection-start-line="36" selection-start-column="23" selection-end-line="36" selection-end-column="23" />
+        <state relative-caret-position="825">
+          <caret line="59" column="1" selection-start-line="59" selection-start-column="1" selection-end-line="59" selection-end-column="1" />
         </state>
       </provider>
     </entry>
@@ -388,29 +371,28 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/writer.go">
+    <entry file="file://$PROJECT_DIR$/pagename.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="14" column="1" selection-start-line="14" selection-start-column="1" selection-end-line="14" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/filewrap.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="458">
-          <caret line="59" column="18" selection-start-line="59" selection-start-column="18" selection-end-line="59" selection-end-column="18" />
+        <state relative-caret-position="495">
+          <caret line="36" column="23" selection-start-line="36" selection-start-column="23" selection-end-line="36" selection-end-column="23" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/mfsstorage.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="518">
-          <caret line="256" column="4" selection-start-line="256" selection-start-column="4" selection-end-line="256" selection-end-column="4" />
+        <state relative-caret-position="210">
+          <caret line="52" selection-start-line="52" selection-end-line="52" />
           <folding>
+            <element signature="n#!!block;n#Log#0" />
             <element signature="n#!!block;n#SetMeta#0" />
+            <element signature="n#!!block;n#GetMeta#0" />
             <element signature="n#!!block;n#List#0" />
+            <element signature="n#!!block;n#Open#0" />
+            <element signature="n#!!block;n#Create#0" />
             <element signature="n#!!block;n#Remove#0" />
             <element signature="n#!!block;n#Rename#0" />
+            <element signature="n#!!block;n#Close#0" />
+            <element signature="n#!!block;n#Flush#0" />
           </folding>
         </state>
       </provider>
