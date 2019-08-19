@@ -7,6 +7,8 @@ import (
 	"github.com/ipfs/go-mfs"
 	ft "github.com/ipfs/go-unixfs"
 	"github.com/prometheus/common/log"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/whyrusleeping/go-logging"
 	"io/ioutil"
@@ -15,6 +17,8 @@ import (
 )
 
 const mfsMetaFilePath = "CURRENT.META"
+
+type ReadingFunc func ( db *leveldb.DB ) error
 
 // mfsStorage is a memory-backed storage.
 type MFSStorage struct {
@@ -45,6 +49,48 @@ func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
 		dbkey:dbkey,
 	}
 
+}
+
+func MergeClose( dbdir *mfs.Directory, batch *leveldb.Batch, logKey string ) error {
+
+	mstorage := NewMFSStorage(dbdir, logKey)
+
+	db, err := leveldb.Open(mstorage, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+
+		if err := db.Close(); err != nil {
+			log.Error(err)
+		}
+
+	}()
+
+	if err := db.Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ReadClose( dbdir *mfs.Directory, rf ReadingFunc, logKey string ) error {
+
+	mstorage := NewMFSStorage(dbdir, logKey)
+
+	db, err := leveldb.Open(mstorage, &opt.Options{ReadOnly:true})
+	if err != nil {
+		return err
+	}
+	defer func() {
+
+		if err := db.Close(); err != nil {
+			log.Error(err)
+		}
+
+	}()
+
+	return rf(db)
 }
 
 func (ms *MFSStorage) Log(str string) {
