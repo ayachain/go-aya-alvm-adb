@@ -51,6 +51,25 @@ func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
 
 }
 
+func CreateEmptyDB( dbdir *mfs.Directory ) error {
+
+	mstorage := NewMFSStorage(dbdir, "")
+	db, err := leveldb.Open(mstorage, nil)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer func() {
+
+		if err := db.Close(); err != nil {
+			log.Error(err)
+		}
+
+	}()
+
+	return nil
+}
+
 func MergeClose( dbdir *mfs.Directory, batch *leveldb.Batch, logKey string ) error {
 
 	mstorage := NewMFSStorage(dbdir, logKey)
