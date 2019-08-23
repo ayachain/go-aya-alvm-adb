@@ -20,7 +20,6 @@ const mfsMetaFilePath = "CURRENT.META"
 
 type ReadingFunc func ( db *leveldb.DB ) error
 
-// mfsStorage is a memory-backed storage.
 type MFSStorage struct {
 
 	storage.Storage
@@ -38,7 +37,6 @@ type MFSStorage struct {
 	dbkey 		string
 }
 
-// NewmfsStorage returns a new memory-backed storage implementation.
 func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
 
 	logging.SetLevel( logging.NOTICE, dbkey )
