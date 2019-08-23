@@ -35,6 +35,7 @@ type MFSStorage struct {
 	log			*logging.Logger
 
 	dbkey 		string
+	
 }
 
 func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
