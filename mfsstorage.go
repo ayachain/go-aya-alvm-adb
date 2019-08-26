@@ -10,6 +10,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
 	"io/ioutil"
 	"os"
@@ -35,7 +36,7 @@ type MFSStorage struct {
 	log			*logging.Logger
 
 	dbkey 		string
-	
+
 }
 
 func NewMFSStorage( mdir *mfs.Directory, dbkey string ) *MFSStorage {
@@ -89,7 +90,7 @@ func MergeClose( dbdir *mfs.Directory, batch *leveldb.Batch, logKey string ) err
 		return err
 	}
 
-	return nil
+	return db.CompactRange( util.Range{} )
 }
 
 func ReadClose( dbdir *mfs.Directory, rf ReadingFunc, logKey string ) error {
